@@ -21,8 +21,6 @@
     "mongodb": "^3.0.4",
     "node-zip": "^1.1.1",
     "nodemailer": "^4.6.3",
-    "nodemailer-sparkpost-transport": "^2.0.0",
-    "sparkpost": "^2.1.2",
     "unzip": "^0.1.11"
   }
 }
