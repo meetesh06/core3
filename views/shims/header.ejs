@@ -2,6 +2,22 @@
 	<nav>
 		<div class="nav-wrapper blue">
 			<a href="/" class="brand-logo center">Open Face API</a>
+	      	<a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+			<% if ( header ) { %>
+			<ul id="nav-mobile" class="right hide-on-med-and-down">
+				<li><a href="javascript:void(reload_dataset())">Reload Dataset</a></li>
+				<li><a href="/logout">Logout</a></li>
+			</ul>
+			<% } %>
 		</div>
 	</nav>
+	
+	<% if ( header ) { %>
+	<ul class="sidenav" id="mobile-demo">
+    	<li><a href="javascript:void(reload_dataset())">Reload Dataset</a></li>
+		<li><a href="/logout">Logout</a></li>
+  	</ul>
+	<% } %>
+	
+	
 </header>

@@ -24,3 +24,10 @@ body {
 main {
 	flex: 1 0 auto;
 }
+.cam {
+    overflow: hidden;
+}
+.my-container {
+	padding: 10px;
+	border-radius: 6px;
+}

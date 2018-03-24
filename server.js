@@ -12,6 +12,7 @@ const session = require('express-session')
 const session_timeout = 10800000;
 const MongoDBStore = require('connect-mongodb-session')(session);
 const fileUpload = require('express-fileupload');
+const rimraf = require('rimraf');
 // const zip = require('node-zip');
 // const unzip = require('unzip');
 const extract = require('extract-zip')
@@ -40,11 +41,11 @@ const dbName = 'carnival';
 // const client = new SparkPost('b756a0bc91d1f52939398aa27db9c96142ad8422');
 
 const smtpTransport = nodemailer.createTransport({
-    service: "yahoo",
-    host: "smtp.mail.yahoo.com",
+    service: "gmail",
+    host: "smtp.gmail.com",
     auth: {
         user: "meeteshmehta4@gmail.com",
-        pass: "6polkmnbB!"
+        pass: "rawhxmesdeueprgt"
     }
 });
 
@@ -83,7 +84,7 @@ app.get('/', function(req, res) {
 	if(req.session.auth) {
 		res.redirect('/dashboard');	
 	} else {
-		res.render('login');	
+		res.render('login', { header: false });	
 	}
 });
 
@@ -114,7 +115,7 @@ app.post('/', urlencodedParser, function(req, res) {
 // load login page here
 app.get('/register', function(req, res) {
 	if(!req.session.auth) {
-		res.render('register');
+		res.render('register', { header: false });
 	} else {
 		res.redirect('/dashboard');
 	}
@@ -127,7 +128,6 @@ app.post('/register', urlencodedParser, function(req, res) {
 		if (req.body && req.body.email && req.body.password && req.body.pin) {
 			console.log(req.body);
 			console.log(req.session.ver_pin);
-			
 			let dataToSend = { _id: req.body.email, password: req.body.password };
 			if(req.session.ver_pin == req.body.pin) {
 				req.session.auth = false;
@@ -156,46 +156,22 @@ app.post('/register', urlencodedParser, function(req, res) {
 			}
 		} else if(req.body && req.body.email) {
 			var random_pin = Math.floor(1000 + Math.random() * 900000);
-			// var mailOptions={
-		 //      to : req.body.email,
-		 //      subject : "Verification for Open Face API",
-		 //      text : "Your Verification Pin is: "+random_pin
-		 //   }
+			var mailOptions={
+		       to : req.body.email,
+		       subject : "Verification for Open Face API",
+		       text : "Your Verification Pin is: "+random_pin
+		    }
 			console.log("PIN: "+random_pin);
 			
-			// client.transmissions.send({
-			//     options: {
-			//       sandbox: true
-			//     },
-			//     content: {
-			//       from: 'meetesh.tk',
-			//       subject: "Verification for Open Face API",
-			//       html:"Your Verification Pin is: "+random_pin
-			//     },
-			//     recipients: [
-			//       {address: req.body.email}
-			//     ]
-			//   })
-			//   .then(data => {
-			//     console.log('Woohoo! You just sent your first mailing!');
-			//     console.log(data);
-			//     res.send({ error: false });
-			//   })
-			//   .catch(err => {
-			//     console.log('Whoops! Something went wrong');
-			//     console.log(err);
-			//     res.send({ error: true });
-			//   });
-			
-			// smtpTransport.sendMail(mailOptions, function(error, response){
-			//       if(error){
-			//           console.log(error);
-			//           res.send({ error: true });
-			//       }else{
-			//           console.log("Message sent: " + response.message);
-			//           res.send({ error: false });
-			//       }
-			//   });
+			smtpTransport.sendMail(mailOptions, function(error, response){
+			      if(error){
+			          console.log(error);
+			          res.send({ error: true });
+			      }else{
+			          console.log("Message sent: " + response.message);
+			          res.send({ error: false });
+			      }
+			  });
 			
 			// smtpTransport.sendMail({
 			//   from: 'meeteshmehta4@gmail.com',
@@ -216,21 +192,19 @@ app.post('/register', urlencodedParser, function(req, res) {
 			
 		    req.session.auth = false;
 		    req.session.ver_pin = random_pin;
-		    res.send({ error: false });
 		}
 	} else {
 		res.send({ error: true });
 	}
 });
 
-
-// load the dashboard page here
-app.get('/dashboard', function(req, res) {
-	if(req.session.auth) {
-		// ensuring the latest model is loaded
+// reload dataset
+app.post('/reload-dataset', function(req, res) {
+	console.log("reload request");
+	if( req.session.auth )	{
 		var loaded;
 		try	{
-			var recognizer_temp = fr.FaceRecognizer();
+			var recognizer_temp = fr.AsyncFaceRecognizer();
 			var modelState = require('./datasets/'+req.session.email+'.json')
 			recognizer_temp.load(modelState);	
 			console.log(recognizer_temp.getDescriptorState());
@@ -239,8 +213,33 @@ app.get('/dashboard', function(req, res) {
 		} catch(err) {
 			loaded = false;
 		}
-		
-		res.render('dashboard', { loaded: loaded });
+		res.send({error: loaded});
+	} else {
+		res.send({error: true});
+	}
+});
+
+// load the dashboard page here
+app.get('/dashboard', function(req, res) {
+	
+	if(req.session.auth) {
+		var loaded = false;
+		if(recognizer1[req.session.email]) {
+			console.log("active memory for "+req.session.email);
+			loaded = true;
+		} else {
+			try	{
+				var recognizer_temp = fr.AsyncFaceRecognizer();
+				var modelState = require('./datasets/'+req.session.email+'.json')
+				recognizer_temp.load(modelState);	
+				console.log(recognizer_temp.getDescriptorState());
+				recognizer1[req.session.email] = recognizer_temp;
+				loaded = true;
+			} catch(err) {
+				loaded = false;
+			}
+		}
+		res.render('dashboard', { loaded: loaded, header: true });
 	} else {
 		res.redirect('/');
 	}
@@ -253,21 +252,37 @@ app.post('/request', urlencodedParser, function(req, res) {
 			if(req.body.type == 101) { // recongize face from base64 image
 				var imageData = req.body.image.replace(/^data:image\/png;base64,/, "");
 				// var recognizer = recognizer1[req.session.email];
+				var recognizer;
 				
-				var recognizer = fr.FaceRecognizer();
-				var modelState = require('./datasets/'+req.session.email+'.json')
-				recognizer.load(modelState);	
+				if(recognizer1[req.session.email]) {
+					recognizer = recognizer1[req.session.email];
+				} else {
+					var modelState = require('./datasets/'+req.session.email+'.json')
+					recognizer.load(modelState);
+					recognizer1[req.session.email] = recognizer;
+				}
 
 				require("fs").writeFile("./tempImageBuffer/"+req.session.email+".png", imageData, 'base64', function(err) {
 					if(err) { res.send( { error: true, data: {} } ) }
+					
 					var faceImages = detector.detectFaces(fr.loadImage("./tempImageBuffer/"+req.session.email+".png"));
 					console.log(faceImages);
-					var bestPrediction = recognizer.predict(faceImages[0]);
-				 	console.log(bestPrediction);
-					// console.log(recognizer.getFaceDescriptors(fr.loadImage("./tempImageBuffer/"+req.session.email+".png")));
+					
+					recognizer.predictBest(faceImages[0]).then((predictions) => {
+					    console.log(predictions);
+					    if(predictions.distance < 0.5) {
+					    	res.send({error: false, data: predictions.className });    	
+					    } else {
+					    	res.send({error: false, data: "unknown person" });
+					    }
+					}).catch((error) => {
+					  	console.log(error);
+					  	res.send({error: true});
+					})
+					
 				});
 
-				res.send({error: false});
+				
 			} else if(req.body.type == 102) {
 				
 				console.log(req.data);
@@ -331,7 +346,7 @@ app.post('/handleDataset', urlencodedParser, function(req, res) {
 	if(req.session.auth) {
 		if (!req.files)
 			return res.send( { error: true } );
-		let sampleFile = req.files.file;
+		let sampleFile = req.files.userfile;
 		sampleFile.mv('./tempDatasetBuffer/'+req.session.email+'.zip', function(err) {
 			if (err)
 				return res.redirect('/');
@@ -339,23 +354,60 @@ app.post('/handleDataset', urlencodedParser, function(req, res) {
 			 	if(err) {
 			 		res.send('Error');
 			 	} else {
-			 		var recognizer = fr.FaceRecognizer();
+			 		// var recognizer = fr.FaceRecognizer();
+			 		var recognizer;
+			 		if(recognizer1[req.session.email]) {
+						console.log("loaded from memory for "+req.session.email);
+						recognizer = recognizer1[req.session.email];
+			 		} else {
+						try	{
+							var recognizer_temp = fr.AsyncFaceRecognizer();
+							var modelState1 = require('./datasets/'+req.session.email+'.json')
+							recognizer_temp.load(modelState1);	
+							console.log("loaded from file for "+req.session.email);
+							recognizer1[req.session.email] = recognizer_temp;
+							recognizer = recognizer1[req.session.email];
+						} catch(err) {
+							console.log("created new recognizer for "+req.session.email);
+							recognizer = fr.AsyncFaceRecognizer();
+						}
+					}
+			 		
 			 		persons = getDirectories(req.session.email);
 			 		console.log(persons);
+			 		var finals = [];
 			 		for(i=0; i<persons.length; i++){
 			 			var current_images = getFiles(persons[i], req.session.email);
+			 			var person_name = persons[i];
+			 			var person_images = [];
+			 			
 			 			for(j=0; j<current_images.length; j++) {
 			 				var final_image_from_uri = fr.loadImage(current_images[j]);
 			 				console.log(current_images[j]);
-			 				var faceImages = detector.detectFaces(final_image_from_uri)
-			 				recognizer.addFaces(faceImages, persons[i]);
+			 				// var faceImages = detector.detectFaces(final_image_from_uri)
+			 				// person_images.push(faceImages);
+			 				finals.push(recognizer.addFaces(detector.detectFaces(final_image_from_uri), persons[i]));
+			 				
 			 			}
+			 			// var obj = recognizer.addFaces(person_images, person_name);
+			 			// finals.push(obj);
 			 		}
-
-
-			 		const modelState = recognizer.serialize();
-					fs.writeFileSync('./datasets/'+ req.session.email +'.json', JSON.stringify(modelState));
-			 		res.redirect('/');
+			 		
+			 		Promise.all(finals).then(() => { 
+			 			console.log("promise done");
+			 			const modelState = recognizer.serialize();
+						fs.writeFileSync('./datasets/'+ req.session.email +'.json', JSON.stringify(modelState));
+						rimraf(__dirname+'/tempDatasetBuffer/'+req.session.email, function () { console.log('done deleting folder'); });
+				 		console.log('done updating dataset');
+				 		var recognizer_temp_fin = fr.AsyncFaceRecognizer();
+						var modelState2 = require('./datasets/'+req.session.email+'.json')
+						recognizer_temp_fin.load(modelState2);
+						recognizer1[req.session.email] = recognizer_temp_fin;
+			 			res.send("done updating dataset");
+			 		} ).catch((error) => { console.log("promise error: "+error); });
+			 		
+			 		
+			 		
 			 	}
 			})
 			
