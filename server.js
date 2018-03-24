@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const port = process.env.PORT || 7770;
+const ip = process.env.IP;
 const fr = require('face-recognition')
 const fs = require('fs');
 const MongoClient = require('mongodb').MongoClient;
@@ -16,6 +17,7 @@ const fileUpload = require('express-fileupload');
 const extract = require('extract-zip')
 const detector = fr.FaceDetector()
 
+// process.env.PORT, process.env.IP
 
 // global array responsible for maintaining the user memory tokens
 // this should be the main memory consumption piece of the application
@@ -26,14 +28,23 @@ app.use(express.static('public'));
 app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
 app.use(fileUpload());
 
-const url = 'mongodb://localhost:27017';
-const dbName = 'meetesh';
+const url = 'mongodb://meetesh:polkmn@ds223009.mlab.com:23009/carnival';
+const dbName = 'carnival';
+
+// var sparkPostTransport = require('nodemailer-sparkpost-transport');
+// const smtpTransport = nodemailer.createTransport(sparkPostTransport({
+// 	sparkPostApiKey: "b756a0bc91d1f52939398aa27db9c96142ad8422"
+// }));
+
+// const SparkPost = require('sparkpost');
+// const client = new SparkPost('b756a0bc91d1f52939398aa27db9c96142ad8422');
+
 const smtpTransport = nodemailer.createTransport({
-    service: "gmail",
-    host: "smtp.gmail.com",
+    service: "yahoo",
+    host: "smtp.mail.yahoo.com",
     auth: {
-        user: "mycampusdock@gmail.com",
-        pass: "D@ckD@ck"
+        user: "meeteshmehta4@gmail.com",
+        pass: "6polkmnbB!"
     }
 });
 
@@ -50,7 +61,8 @@ MongoClient.connect(url, function(err, client) {
 	assert.equal(null, err);
 	console.log("Connected successfully to server");
 	db = client.db(dbName);
-	app.listen(port, function(){
+	
+	app.listen(port, ip, function(){
 		console.log("Wa are live on "+port);
 	});
 });
@@ -110,18 +122,31 @@ app.get('/register', function(req, res) {
 
 // do authentication here
 app.post('/register', urlencodedParser, function(req, res) {
+	
 	if(!req.session.auth) {
 		if (req.body && req.body.email && req.body.password && req.body.pin) {
+			console.log(req.body);
+			console.log(req.session.ver_pin);
+			
 			let dataToSend = { _id: req.body.email, password: req.body.password };
 			if(req.session.ver_pin == req.body.pin) {
 				req.session.auth = false;
 				db.collection(COLLECTION_USERS).insertOne( dataToSend, function(err, result) {
-					if(err) { res.send("Error") }
-					fs.appendFile('./datasets/'+req.body.email+'.json', '', function (err) {
-					  	if (err) throw err;
-					  	console.log("successfully created new user");
-						res.redirect("/");
-					});
+					if(err) { 
+						console.log(err);
+						if(err.code == 11000) {
+							res.send("Email already registered");
+						} else {
+							res.send("Error, contact help with error code: "+err.code);
+						}
+						 
+					} else {
+						fs.appendFile('./datasets/'+req.body.email+'.json', '', function (err) {
+						  	if (err) throw err;
+						  	console.log("successfully created new user");
+							res.redirect("/");
+						});
+					}
 				});
 			} else {
 				if(req.session) {
@@ -131,22 +156,67 @@ app.post('/register', urlencodedParser, function(req, res) {
 			}
 		} else if(req.body && req.body.email) {
 			var random_pin = Math.floor(1000 + Math.random() * 900000);
-			var mailOptions={
-		       to : req.body.email,
-		       subject : "Verification for Open Face API",
-		       text : "Your Verification Pin is: "+random_pin
-		    }
-			smtpTransport.sendMail(mailOptions, function(error, response){
-		        if(error){
-		            console.log(error);
-		            res.send({ error: true });
-		        }else{
-		            console.log("Message sent: " + response.message);
-		            res.send({ error: false });
-		        }
-		    });
+			// var mailOptions={
+		 //      to : req.body.email,
+		 //      subject : "Verification for Open Face API",
+		 //      text : "Your Verification Pin is: "+random_pin
+		 //   }
+			console.log("PIN: "+random_pin);
+			
+			// client.transmissions.send({
+			//     options: {
+			//       sandbox: true
+			//     },
+			//     content: {
+			//       from: 'meetesh.tk',
+			//       subject: "Verification for Open Face API",
+			//       html:"Your Verification Pin is: "+random_pin
+			//     },
+			//     recipients: [
+			//       {address: req.body.email}
+			//     ]
+			//   })
+			//   .then(data => {
+			//     console.log('Woohoo! You just sent your first mailing!');
+			//     console.log(data);
+			//     res.send({ error: false });
+			//   })
+			//   .catch(err => {
+			//     console.log('Whoops! Something went wrong');
+			//     console.log(err);
+			//     res.send({ error: true });
+			//   });
+			
+			// smtpTransport.sendMail(mailOptions, function(error, response){
+			//       if(error){
+			//           console.log(error);
+			//           res.send({ error: true });
+			//       }else{
+			//           console.log("Message sent: " + response.message);
+			//           res.send({ error: false });
+			//       }
+			//   });
+			
+			// smtpTransport.sendMail({
+			//   from: 'meeteshmehta4@gmail.com',
+			//   to: req.body.email,
+			//   subject: 'Verification for API',
+			//   text: "Your Verification Pin is: "+random_pin
+			// }, function(err, info) {
+			//   if (err) {
+			//     console.log('Error: ' + err);
+	  //        res.send({ error: true });
+
+			//   } else {
+			//     console.log('Success: ' + info);
+	  //      	res.send({ error: false });
+
+			//   }
+			// });
+			
 		    req.session.auth = false;
 		    req.session.ver_pin = random_pin;
+		    res.send({ error: false });
 		}
 	} else {
 		res.send({ error: true });
