@@ -54,8 +54,13 @@
 						</div>
 					</div>
 				</div>
-				
-				
+				<div class="row">
+					<div class="col s12">
+						<ul class="collection" id="dataset_collection">
+						   
+					    </ul>
+					</div>
+				</div>
 			</div>
 		</main>
 		<% include shims/footer.ejs %>
@@ -96,6 +101,32 @@
 	                }
 	            });
 	        }
+	        
+	        function request_collection() {
+	        	$.ajax({
+				    url: "/get-database-resoruce",
+				    type: "post",
+				    success: function(result) {
+				        if(!result.error) {
+				        	$("#dataset_collection").html("");
+				        	for( i=0; i<result.data.length; i++ ) {
+				        		var collection = `
+				        		<li class="collection-item avatar">
+							      <span class="title">${ result.data[i].className }</span>
+							      <p>
+							      	trained ${ result.data[i].numFaces } faces
+							      </p>
+							    </li>
+				        		`;
+				        		$("#dataset_collection").append(collection);
+				           		// M.toast({html: result.data[i].className+""}); 
+				        	}
+				        } else {
+				            M.toast({html: "error"});
+				        }
+				    }
+				});
+	        }
 
 	        function send_dataset() {
 	        	// $('form').submit();
@@ -111,6 +142,7 @@
 				    if (this.readyState == 4 && this.status == 200) {
 				    	var current = this.responseText;
 			    		M.toast({html: current});
+			    		reload_dataset();
 				    	console.log('response: ' + this.responseText);
 				    }
 			  	};
@@ -141,12 +173,13 @@
 	                url: "/reload-dataset",
 	                type: "post",
 	                success: function(result) {
-	                	if(!result.error) {
+	                	console.log(result);
+	                	if(result.error) {
 	                		M.toast({html: 'no dataset found'});
 	                	} else {
 	                		M.toast({html: 'dataset loaded successfully'});
+	                		request_collection();
 	                	}
-	                	
 	                }
 	            });
 	        }
@@ -160,6 +193,7 @@
 	    		<% } %>
 	    		$('.tabs').tabs();
 	    		$('.sidenav').sidenav();
+	    		reload_dataset();
 	    	});
 	    </script>
    	</body>

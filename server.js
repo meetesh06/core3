@@ -202,18 +202,22 @@ app.post('/register', urlencodedParser, function(req, res) {
 app.post('/reload-dataset', function(req, res) {
 	console.log("reload request");
 	if( req.session.auth )	{
-		var loaded;
-		try	{
-			var recognizer_temp = fr.AsyncFaceRecognizer();
-			var modelState = require('./datasets/'+req.session.email+'.json')
-			recognizer_temp.load(modelState);	
-			console.log(recognizer_temp.getDescriptorState());
-			recognizer1[req.session.email] = recognizer_temp;
-			loaded = true;
-		} catch(err) {
-			loaded = false;
+		var recognizer = fr.AsyncFaceRecognizer();
+		if(recognizer1[req.session.email]) {
+			recognizer = recognizer1[req.session.email];
+			console.log("db res: "+recognizer1[req.session.email].getDescriptorState()[0].numFaces);
+			res.send({error: false});
+		} else {
+			try	{
+				var modelState1 = require('./datasets/'+req.session.email+'.json')
+				recognizer.load(modelState1);
+				recognizer1[req.session.email] = recognizer;
+				console.log("db res: "+recognizer1[req.session.email].getDescriptorState()[0].numFaces);
+				res.send({error: false});
+			} catch(err) {
+				res.send({error: true});
+			}
 		}
-		res.send({error: loaded});
 	} else {
 		res.send({error: true});
 	}
@@ -225,6 +229,7 @@ app.get('/dashboard', function(req, res) {
 	if(req.session.auth) {
 		var loaded = false;
 		if(recognizer1[req.session.email]) {
+			console.log("dash mem: "+recognizer1[req.session.email].getDescriptorState()[0].numFaces);
 			console.log("active memory for "+req.session.email);
 			loaded = true;
 		} else {
@@ -245,14 +250,35 @@ app.get('/dashboard', function(req, res) {
 	}
 });
 
+app.post('/get-database-resoruce', function(req, res) {
+	 if(req.session.auth) {
+	 	var recognizer;
+		console.log("db res: "+recognizer1[req.session.email].getDescriptorState()[0].numFaces);
+		if(recognizer1[req.session.email]) {
+			recognizer = recognizer1[req.session.email];
+		} else {
+			var modelState = require('./datasets/'+req.session.email+'.json')
+			recognizer.load(modelState);
+			recognizer1[req.session.email] = recognizer;
+		}
+		if(recognizer) {
+			res.send({ error: false, data: recognizer.getDescriptorState() });
+		} else {
+			res.send({ error: true });
+		}
+		
+	 } else {
+	 	res.send({ error: true });
+	 }
+});
+
 app.post('/request', urlencodedParser, function(req, res) {
 	if(req.session.auth) {
 		if(req.body && req.body.type ) {
 			
 			if(req.body.type == 101) { // recongize face from base64 image
 				var imageData = req.body.image.replace(/^data:image\/png;base64,/, "");
-				// var recognizer = recognizer1[req.session.email];
-				var recognizer;
+				var recognizer = fr.AsyncFaceRecognizer();
 				
 				if(recognizer1[req.session.email]) {
 					recognizer = recognizer1[req.session.email];
@@ -261,45 +287,37 @@ app.post('/request', urlencodedParser, function(req, res) {
 					recognizer.load(modelState);
 					recognizer1[req.session.email] = recognizer;
 				}
-
-				require("fs").writeFile("./tempImageBuffer/"+req.session.email+".png", imageData, 'base64', function(err) {
-					if(err) { res.send( { error: true, data: {} } ) }
-					
-					var faceImages = detector.detectFaces(fr.loadImage("./tempImageBuffer/"+req.session.email+".png"));
-					console.log(faceImages);
-					
-					recognizer.predictBest(faceImages[0]).then((predictions) => {
-					    console.log(predictions);
-					    if(predictions.distance < 0.5) {
-					    	res.send({error: false, data: predictions.className });    	
-					    } else {
-					    	res.send({error: false, data: "unknown person" });
-					    }
-					}).catch((error) => {
-					  	console.log(error);
-					  	res.send({error: true});
-					})
-					
-				});
-
 				
-			} else if(req.body.type == 102) {
+				console.log(recognizer1[req.session.email].getDescriptorState());
 				
-				console.log(req.data);
-
-				if (!req.files)
-					return res.send.send( { error: true } );
-
-				// The name of the input field (i.e. "sampleFile") is used to retrieve the uploaded file
-				let sampleFile = req.files.sampleFile;
-
-				// Use the mv() method to place the file somewhere on your server
-				sampleFile.mv('./tempDatasetBuffer/'+  +'.zip', function(err) {
-					if (err)
-						return res.send.send( { error: true } );
-					return res.send.send( { error: false } );
-				});
-
+				if(recognizer1[req.session.email].getDescriptorState().length <= 1) {
+					console.log("recognizer: "+recognizer.getDescriptorState().length);
+					return res.send({error: true});
+				}
+				try {
+					require("fs").writeFile("./tempImageBuffer/"+req.session.email+".png", imageData, 'base64', function(err) {
+						if(err) { res.send( { error: true, data: {} } ) }
+						
+						var faceImages = detector.detectFaces(fr.loadImage("./tempImageBuffer/"+req.session.email+".png"));
+	
+						recognizer.predictBest(faceImages[0]).then((predictions) => {
+						    console.log(predictions);
+						    if(predictions.distance < 0.5) {
+						    	res.send({error: false, data: predictions.className });    	
+						    } else {
+						    	res.send({error: false, data: "unknown person" });
+						    }
+						}).catch((error) => {
+						  	console.log(error);
+						  	res.send({error: true});
+						})
+						
+					});
+				} catch(err) {
+					res.send({error: true});
+				}
+				
+				
 			} else {
 				res.send( { error: true } );
 			}
@@ -354,25 +372,16 @@ app.post('/handleDataset', urlencodedParser, function(req, res) {
 			 	if(err) {
 			 		res.send('Error');
 			 	} else {
-			 		// var recognizer = fr.FaceRecognizer();
-			 		var recognizer;
-			 		if(recognizer1[req.session.email]) {
-						console.log("loaded from memory for "+req.session.email);
+			 		var recognizer = fr.AsyncFaceRecognizer();
+					if(recognizer1[req.session.email]) {
 						recognizer = recognizer1[req.session.email];
-			 		} else {
+					} else {
 						try	{
-							var recognizer_temp = fr.AsyncFaceRecognizer();
 							var modelState1 = require('./datasets/'+req.session.email+'.json')
-							recognizer_temp.load(modelState1);	
-							console.log("loaded from file for "+req.session.email);
-							recognizer1[req.session.email] = recognizer_temp;
-							recognizer = recognizer1[req.session.email];
+							recognizer.load(modelState1);	
 						} catch(err) {
-							console.log("created new recognizer for "+req.session.email);
-							recognizer = fr.AsyncFaceRecognizer();
 						}
 					}
-			 		
 			 		persons = getDirectories(req.session.email);
 			 		console.log(persons);
 			 		var finals = [];
@@ -380,30 +389,32 @@ app.post('/handleDataset', urlencodedParser, function(req, res) {
 			 			var current_images = getFiles(persons[i], req.session.email);
 			 			var person_name = persons[i];
 			 			var person_images = [];
-			 			
 			 			for(j=0; j<current_images.length; j++) {
 			 				var final_image_from_uri = fr.loadImage(current_images[j]);
 			 				console.log(current_images[j]);
-			 				// var faceImages = detector.detectFaces(final_image_from_uri)
-			 				// person_images.push(faceImages);
 			 				finals.push(recognizer.addFaces(detector.detectFaces(final_image_from_uri), persons[i]));
-			 				
 			 			}
-			 			// var obj = recognizer.addFaces(person_images, person_name);
-			 			// finals.push(obj);
 			 		}
 			 		
 			 		Promise.all(finals).then(() => { 
-			 			console.log("promise done");
-			 			const modelState = recognizer.serialize();
-						fs.writeFileSync('./datasets/'+ req.session.email +'.json', JSON.stringify(modelState));
-						rimraf(__dirname+'/tempDatasetBuffer/'+req.session.email, function () { console.log('done deleting folder'); });
-				 		console.log('done updating dataset');
-				 		var recognizer_temp_fin = fr.AsyncFaceRecognizer();
-						var modelState2 = require('./datasets/'+req.session.email+'.json')
-						recognizer_temp_fin.load(modelState2);
-						recognizer1[req.session.email] = recognizer_temp_fin;
-			 			res.send("done updating dataset");
+			 			
+			 			fs.unlink('./datasets/'+ req.session.email +'.json', function(err) {
+			 				console.log("promise done");
+			 				
+			 				console.log("NEW res: "+recognizer.getDescriptorState()[0].numFaces);
+ 							fs.writeFileSync('./datasets/'+ req.session.email +'.json', JSON.stringify(recognizer.serialize()));
+							
+							rimraf(__dirname+'/tempDatasetBuffer/'+req.session.email, function () { console.log('done deleting folder'); });
+					 		
+							recognizer1[req.session.email] = recognizer;
+				 			
+				 			res.send("done updating dataset");
+			 			});
+			 			
+			 			
+			 			
+			 			
+			 			
 			 		} ).catch((error) => { console.log("promise error: "+error); });
 			 		
 			 		
