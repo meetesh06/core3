@@ -13,6 +13,7 @@
 						<ul id="tabs-swipe-demo" class="tabs">
 							<li class="tab col s3"><a class="active" href="#test-swipe-1">detect</a></li>
 							<li class="tab col s3"><a href="#test-swipe-2">generate</a></li>
+							<li class="tab col s3"><a href="#dataset">dataset</a></li>
 						</ul>
 						<div id="test-swipe-1" class="my-container z-depth-2 col s12">
 							<br>
@@ -23,7 +24,13 @@
 								</div>
 								<div class="col s12 l6 cam">
 									<div id="my_result" style="width:100%; height:240px;">No image loaded</div>	
-					    			<p class="center"><a href="javascript:void(send_image())" class="waves-effect waves-light btn blue col s12">Upload</a></p>
+					    			<p class="center"><a href="javascript:void(send_image())" class="waves-effect waves-light btn blue col s12">Check</a></p>
+								</div>
+							</div>
+							<div class="row">
+								<div class="col s12">
+							      <ul id="possible-matches" class="collection">
+							      </ul>
 								</div>
 							</div>	
 						</div>
@@ -52,13 +59,16 @@
 								</form>
 							</div>
 						</div>
-					</div>
-				</div>
-				<div class="row">
-					<div class="col s12">
-						<ul class="collection" id="dataset_collection">
-						   
-					    </ul>
+
+						<div id="dataset" class="my-container z-depth-2 col s12">
+							<div class="row">
+								<div class="col s12">
+									<ul class="collection" id="dataset_collection">
+									   
+								    </ul>
+								</div>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -88,16 +98,34 @@
 	            } );
 	        }
 	        function send_image() {
+	        	$("#possible-matches").html(" ");
 	        	$.ajax({
 	                url: "/request",
 	                type: "post",
 	                data: { image: raw_image_data, type: 101, person_id: $("#person_id").val() },
 	                success: function(result) {
+	                	console.log(result);
 	                	if(!result.error) {
-	                		M.toast({html: result.data+""});
+
+	                		for(i=0;i<result.data.length;i++) {
+
+	                			if(i == 3 ) {
+	                				break;
+	                			}
+
+	                			var item = `
+	                				<a href="">
+						        	<li class="collection-item"><div>${result.data[i].className} - ${result.data[i].distance}<a href="#!" class="secondary-content"><i class="material-icons">send</i></a></div></li>
+	                				</a>
+	                			`;
+
+	                			$("#possible-matches").append(item);
+	                		}
+
 	                	} else {
 	                		M.toast({html: "error"});
 	                	}
+	                	
 	                }
 	            });
 	        }
@@ -126,6 +154,11 @@
 				        }
 				    }
 				});
+	        }
+
+	        function open_sidebar() {
+	        	var instance = M.Sidenav.getInstance($("#mobile-demo"));
+	        	instance.open();
 	        }
 
 	        function send_dataset() {
@@ -196,5 +229,54 @@
 	    		reload_dataset();
 	    	});
 	    </script>
+
+	      <script>
+		    window.onload = function() {
+		      var video = document.getElementById('video');
+		      var canvas = document.getElementById('canvas');
+		      var context = canvas.getContext('2d');
+		      var request = false;
+		      var tracker = new tracking.ObjectTracker('face');
+		      tracker.setInitialScale(4);
+		      tracker.setStepSize(2);
+		      tracker.setEdgesDensity(0.1);
+
+
+		      tracking.track('#video', tracker, { camera: true });
+
+		      tracker.on('track', function(event) {
+		        context.clearRect(0, 0, canvas.width, canvas.height);
+		   
+		        if(!request) {
+		          var frame = captureVideoFrame('video', 'png');
+		          var raw_image_data = frame.dataUri.replace(/^data\:image\/\w+\;base64\,/, '');
+		          console.log(raw_image_data);
+		          request = true;
+		          $.ajax({
+		              url: "/request",
+		              type: "post",
+		              data: { image: raw_image_data, type: 101 },
+		              success: function(result) {
+		                if(!result.error) {
+		                  M.toast({html: result.data+""});
+		                } else {
+		                  M.toast({html: "error"});
+		                }
+		                request = false;
+		              },
+		              failure: function(result) {
+		                request = false;
+		              }
+		          });
+		        }
+		        event.data.forEach(function(rect) {
+		          context.strokeStyle = '#a64ceb';
+		          context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+		          context.font = '11px Helvetica';
+		          context.fillStyle = "#fff";
+		        });
+		      });
+		    };
+		  </script>
    	</body>
 </html>

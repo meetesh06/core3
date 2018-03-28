@@ -23,7 +23,7 @@ const https = require('https')
 // process.env.PORT, process.env.IP
 
 // global array responsible for maintaining the user memory tokens
-// this should be the main memory consumption piece of the application
+// this should be the main memory consumpti›on piece of the application
 var recognizer1 = {};
 
 app.set('view engine', 'ejs');
@@ -91,6 +91,10 @@ app.use(require('express-session')({
   resave: false,
   saveUninitialized: false
 }));
+
+app.get('/live', function(req, res) {
+	res.render('test');	
+});
 
 // load login page here
 app.get('/', function(req, res) {
@@ -313,13 +317,14 @@ app.post('/request', urlencodedParser, function(req, res) {
 						
 						var faceImages = detector.detectFaces(fr.loadImage("./tempImageBuffer/"+req.session.email+".png"));
 	
-						recognizer.predictBest(faceImages[0]).then((predictions) => {
-						    console.log(predictions);
-						    if(predictions.distance < 0.5) {
-						    	res.send({error: false, data: predictions.className });    	
-						    } else {
-						    	res.send({error: false, data: "unknown person" });
-						    }
+						recognizer.predict(faceImages[0]).then((predictions) => {
+							var toSend = predictions;
+							toSend = toSend.sort(compare);
+							console.log(toSend);
+
+
+
+						    res.send({error: false, data: toSend.slice(0,3) });
 						}).catch((error) => {
 						  	console.log(error);
 						  	res.send({error: true});
@@ -344,6 +349,19 @@ app.post('/request', urlencodedParser, function(req, res) {
 });
 
 // parent folder source
+
+function compare(a, b) {
+    const distA = a.distance;
+    const distB = b.distance;
+    let comparison = 0;
+    if (distA > distB) {
+        comparison = 1;
+    } else if (distA < distB) {
+        comparison = -1;
+    }
+    return comparison;
+}
+
 
 const superPath = './tempDatasetBuffer';
 
