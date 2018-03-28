@@ -17,6 +17,8 @@ const rimraf = require('rimraf');
 // const unzip = require('unzip');
 const extract = require('extract-zip')
 const detector = fr.FaceDetector()
+const https = require('https')
+// const redirectToHTTPS = require('express-http-to-https').redirectToHTTPS
 
 // process.env.PORT, process.env.IP
 
@@ -28,6 +30,11 @@ app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
 app.use(fileUpload());
+
+const httpsOptions = {
+  key: fs.readFileSync('./key.pem'),
+  cert: fs.readFileSync('./cert.pem')
+}
 
 const url = 'mongodb://meetesh:polkmn@ds223009.mlab.com:23009/carnival';
 const dbName = 'carnival';
@@ -63,10 +70,16 @@ MongoClient.connect(url, function(err, client) {
 	console.log("Connected successfully to server");
 	db = client.db(dbName);
 	
-	app.listen(port, ip, function(){
-		console.log("Wa are live on "+port);
-	});
+	// app.listen(port, ip, function(){
+	// 	console.log("Wa are live on "+port);
+	// });
+	https.createServer(httpsOptions, app).listen(port);
+
 });
+
+
+
+
 
 // SESSION MANAGEMENT
 app.use(require('express-session')({
