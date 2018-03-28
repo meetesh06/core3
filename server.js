@@ -18,6 +18,8 @@ const rimraf = require('rimraf');
 const extract = require('extract-zip')
 const detector = fr.FaceDetector()
 const https = require('https')
+const async = require('async');
+
 // const redirectToHTTPS = require('express-http-to-https').redirectToHTTPS
 
 // process.env.PORT, process.env.IP
@@ -58,6 +60,7 @@ const smtpTransport = nodemailer.createTransport({
 
 const COLLECTION_SESSION = "session"; 
 const COLLECTION_USERS = "users"; 
+const COLLECTION_RAW = "raw"; 
 
 var db;
 var urlencodedParser = bodyParser.urlencoded({ extended: false })
@@ -92,8 +95,113 @@ app.use(require('express-session')({
   saveUninitialized: false
 }));
 
+
+app.post('/profile', urlencodedParser, function(req, res) {
+	if(req.session.auth && req.body && req.body.roll_no && req.body.image1 && req.body.image2 && req.body.image3 && req.body.image4 && req.body.image5) {
+		var image1 = req.body.image1.replace(/^data:image\/\w+;base64,/, '');
+		var image2 = req.body.image2.replace(/^data:image\/\w+;base64,/, '');
+		var image3 = req.body.image3.replace(/^data:image\/\w+;base64,/, '');
+		var image4 = req.body.image4.replace(/^data:image\/\w+;base64,/, '');
+		var image5 = req.body.image5.replace(/^data:image\/\w+;base64,/, '');
+		var images = [image1, image2, image3, image4, image5];
+		var raw_roll = req.body.roll_no;
+		req.body.roll_no = req.body.roll_no.replace(/\//g, '_');
+		var recognizer = fr.AsyncFaceRecognizer();
+		var finals = [];
+
+		var dir = "./raw/"+req.body.roll_no;
+		if (!fs.existsSync(dir)){
+		    fs.mkdirSync(dir);
+		}
+
+
+		var dd = "./raw/"+req.body.roll_no+"/";
+
+		async.each([0,1,2,3,4], function (file, callback) {
+
+		    fs.writeFile(dd+file+".jpeg", images[file], {encoding: 'base64'} , function (err) {
+		        if (err) {
+		            console.log(err);
+		        }
+		        else {
+		            console.log('file written');
+		        }
+
+		        callback();
+		    });
+
+		}, function (err) {
+
+		    if (err) {
+		        // One of the iterations produced an error.
+		        // All processing will now stop.
+		        console.log('A file failed to process');
+		        return res.send("error: "+error);
+		    }
+		    else {
+		        console.log('All files have been processed successfully');
+        		if(recognizer1[req.session.email]) {
+					recognizer = recognizer1[req.session.email];
+				} else {
+					try	{
+						var modelState1 = require('./datasets/'+req.session.email+'.json')
+						recognizer.load(modelState1);	
+					} catch(err) {
+					}
+					for(i=0;i<5;i++) {
+						try {
+							var final_image_from_uri = fr.loadImage(dd+i+".jpeg");
+							// finals.push(recognizer.addFaces(detector.detectFaces(final_image_from_uri), req.body.roll_no ));
+							var faces = detector.detectFaces(final_image_from_uri);
+							if (faces.length > 0) {
+								recognizer.addFaces(faces, req.body.roll_no )
+							} else {
+								return res.send("image not clear, please take better a image in which the entire face is clearly visible");
+							}
+						} catch (error) {
+							return res.send("error: "+error);
+						}
+					}
+			 		// Promise.all(finals).then(() => { 
+ 			
+						// console.log("promise done");
+							
+						fs.writeFileSync('./datasets/'+ req.session.email +'.json', JSON.stringify(recognizer.serialize()));
+								 		
+						recognizer1[req.session.email] = recognizer;
+			 			
+			 			return res.send("Successful updating the dataset <a href='/'>Go To Home</a>");
+			 			
+			 		// } ).catch((error) => { 
+						// res.send("Error");
+			 		// 	console.log("promise error: "+error); 
+			 		// });
+
+
+				}
+
+		    }
+		});
+
+
+
+
+
+	} else {
+		return res.redirect('/');
+	}
+});
+
 app.get('/live', function(req, res) {
 	res.render('test');	
+});
+
+app.get('/profile', function(req, res) {
+	if(req.session.auth) {
+		res.render('profile', { header: true });	
+	} else {
+		res.redirect('/');
+	}
 });
 
 // load login page here

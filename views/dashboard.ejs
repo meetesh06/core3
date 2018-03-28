@@ -63,8 +63,12 @@
 						<div id="dataset" class="my-container z-depth-2 col s12">
 							<div class="row">
 								<div class="col s12">
+									<h4 class="center">Trained Faces</h4>
+								</div>
+							</div>
+							<div class="row">
+								<div class="col s12">
 									<ul class="collection" id="dataset_collection">
-									   
 								    </ul>
 								</div>
 							</div>
@@ -182,24 +186,6 @@
 			  	request.timeout = 1000*60*30;
 				request.open("POST", "/handleDataset");
 				request.send(formData);
-				
-				
-			
-				// var fd = new FormData();   
-	 			// 	fd.append( 'file', $('#file')[0].files );
-	 			// 	$.ajax({
-	 			// 		url: '/request',
-				 //        type: "POST",
-				 //        enctype: 'multipart/form-data',
-				 //        processData: false,  // Important!
-				 //        contentType: false,
-				 //        cache: false,
-				 //        data: fd,
-				 //        success: function(data){
-				//         console.log(data);
-				//     }
-				// });
-
 	        }
 	        function reload_dataset() {
 	        	$.ajax({
