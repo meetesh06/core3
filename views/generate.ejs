@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<% include shims/head.ejs %>
+		<style type="text/css">
+			#my_camera {
+				margin: 0 auto;
+			}
+
+			.curve_me {
+				border-radius: 6px;
+				background-color: #000;
+				overflow: hidden;
+			}
+
+			#my_result_holder {
+				margin: 0 auto;
+			}
+
+			.dist {
+				margin: 5px; 
+			}
+
+			.main_holder {
+				border-radius: 6px;
+				margin-top: 20px;
+			}
+
+			.take_image {
+				border-radius: 500px;
+				width: 80px;
+			}
+
+			
+
+		</style>
+	</head>
+	<body>
+		<% include shims/header.ejs %>
+		<main>
+			<div class="container">
+				
+
+
+				<div class="row z-depth-2 main_holder">
+									  <div class="row">
+				    <div class="col s12">
+				      <ul class="tabs">
+				        <li class="tab col s3"><a href="#test1">Using Webcam</a></li>
+				        <li class="tab col s3"><a href="#test2">Upload Zip File</a></li>
+				      </ul>
+				    </div>
+				    <div id="test1" class="col s12">
+				    	<div class="row">
+				    		<div class="col s12">
+								<br>
+								<div class="row">
+								
+									<div class="col s12 cam" id="my_camera_holder">
+										<div class="curve_me" id="my_camera" style="width:640px; height:480px;"></div>
+										<p id="show_status" class="center"></p>
+						    			<div class="progress">
+
+										  <div id="progress_viewer" class="determinate" style="width: 0%"></div>
+										</div>
+						    			<p class="center"><a id="start_snap" href="javascript:void(take_snapshots())" class="take_image waves-effect waves-light btn red"><i class="material-icons">camera_alt</i></a></p>
+									</div>
+									<div class="col s12">
+										<br>
+										<div id="my_result_holder">
+											<div id="my_result"></div>
+										</div>
+									</div>
+								</div>
+								<div class="row">
+									<form class="col s12" method="POST" action="/profile">
+										<div class="row">
+											<div class="col s1"></div>
+									        <div class="input-field col s5">
+												<input required="true" name="first_name" id="first_name" type="text" class="validate">
+												<label for="first_name">First Name</label>
+											</div>
+									        <div class="input-field col s5">
+												<input required="true" name="last_name" id="last_name" type="text" class="validate">
+												<label for="last_name">Last Name</label>
+											</div>
+											<div class="col s1"></div>
+										</div>
+										<div class="row">
+											<div class="col s1"></div>
+									        <div class="input-field col s5">
+												<input required="true" name="email" id="email" type="email" class="validate">
+												<label for="email">Email Address</label>
+											</div>
+									        <div class="input-field col s5">
+												<input required="true" name="phone" id="phone" type="number" class="validate">
+												<label for="phone">Phone Number</label>
+											</div>
+											<div class="col s1"></div>
+										</div>
+										<div class="row">
+											<div class="col s1"></div>
+									        <div class="input-field col s10">
+												<input required="true" name="address" id="address" type="text" class="validate">
+												<label for="address">Address</label>
+											</div>
+										</div>
+										<div class="row">
+											<div class="col s2"></div>
+									        <div class="input-field col s8">
+												<input required="true" name="roll_no" id="roll_no" type="text" class="validate">
+												<label for="roll_no">Roll Number</label>
+											</div>
+										</div>
+										<input required="true" hidden="true" type="text" id="image1" name="image1">
+										<input required="true" hidden="true" type="text" id="image2" name="image2">
+										<input required="true" hidden="true" type="text" id="image3" name="image3">
+										<input required="true" hidden="true" type="text" id="image4" name="image4">
+										<input required="true" hidden="true" type="text" id="image5" name="image5">
+										<div class="row">
+											<div class="col s4"></div>
+											<div class="col s4">
+											  <button class="col s12 blue center btn waves-effect waves-light" type="submit" name="action">Submit
+											    	<i class="material-icons right">send</i>
+											  </button>
+											</div>
+										</div>
+									</form>
+								</div>
+				    		</div>
+				    	</div>
+				    </div>
+				    <div id="test2" class="col s12">
+				    	<div class="row">
+							<div class="col s2"></div>
+							<div class="col s8">
+								<p class="flow-text">Please enter you dataset in the form of a compressed zip file</p>
+								<form encType="multipart/form-data" action="#" method="POST" class="file-field input-field submit-form">
+									
+									<div class="row">
+							       		<div class="btn red col s6">
+											<span>File</span>
+											<input name="file" id="file" type="file">
+										</div>
+										<div class="file-path-wrapper col s6">
+											<input class="file-path validate" type="text">
+										</div>
+							      	</div>
+									
+									<input id="dataset_type" type="text" hidden="true" name="type" value="102">
+									
+									<div class="row">
+							       		<a href="javascript:void(send_dataset())" class="waves-effect waves-light btn blue col s12">Upload</a>
+							      	</div>
+									
+								</form>
+							</div>
+
+				    	</div>
+				    </div>
+				  </div>
+
+					<div class="col s12">
+					</div>
+				</div>
+			</div>
+		</main>
+		<% include shims/footer.ejs %>
+		<!--JavaScript at end of body for optimized loading-->
+		<script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+		<script type="text/javascript" src="js/webcam.min.js"></script>
+	    <script language="JavaScript">
+	        number = 1;
+	        Webcam.attach( '#my_camera' );
+	        Webcam.set({
+		        // width: 640,
+		        // height: 480,
+		        // dest_width: 640,
+		        // dest_height: 480,
+		        image_format: 'jpeg',
+		        jpeg_quality: 100,
+		        force_flash: false,
+		        flip_horiz: true,
+		        // fps: 45
+		    });
+		    function take_snapshots() {
+        		$("#show_status").html(" ");
+        		$("#start_snap").removeClass("red");
+        		$("#start_snap").addClass("blue");	
+
+        		console.log(number);
+		    	
+		    	if (number >= 6) {
+		    		$("#my_result").html(" ");
+	        		$("#show_status").html(" ");
+	        		$("#start_snap").removeClass("blue");
+	        		$("#start_snap").removeClass("green");
+	        		$("#start_snap").addClass("red");
+	        		for(i=1;i<=5;i++) {
+		        		var current_field = "#image"+i;
+		            	$(current_field).val(" ");
+	        		}
+	        		number = 1;
+	        		return;
+		    	}
+	            Webcam.snap( function(data_uri) {
+	            	raw_image_data = data_uri.replace(/^data\:image\/\w+\;base64\,/, '');
+	            	$("#my_result").append('<img class="curve_me dist" width="100" height="100%" src="'+data_uri+'"/>');
+	            	var current_field = "#image"+number;
+	            	$(current_field).val(raw_image_data);
+	            	number++;
+			    	if (number == 6) {
+		        		$("#start_snap").removeClass("blue");
+		        		$("#start_snap").removeClass("green");
+		        		$("#start_snap").addClass("green");	
+		        		return;
+			    	}
+
+	    //         	setTimeout(function() {
+					// 	$("#show_status").html("Taking Image");
+					//   	take_snapshot_recursive(i+1);
+					// }, 5000);
+	            } );
+
+
+		    	// $("#start_snap").addClass("disabled");		    	
+		    	// $("#my_result").html(" ");
+		    	// $("#show_status").html(" ");
+		    	// take_snapshot_recursive(1);
+		    }
+	        function take_snapshot_recursive(i) {
+	        	if(i == 6) {
+	        		$("#show_status").html(" ");
+	        		$("#start_snap").removeClass("disabled");	
+	        		return;
+	        	}
+	        	console.log("val: "+i);
+	        	$("#progress_viewer").css("width", (i*20) + "%" );
+	            Webcam.snap( function(data_uri) {
+	            	raw_image_data = data_uri.replace(/^data\:image\/\w+\;base64\,/, '');
+	            	$("#my_result").append('<img class="curve_me dist" width="100" height="100%" src="'+data_uri+'"/>');
+	            	var current_field = "#image"+i;
+	            	$(current_field).val(raw_image_data);
+	            	$("#show_status").html("Free To Move");
+	            	
+	            	setTimeout(function() {
+						$("#show_status").html("Taking Image");
+					  	take_snapshot_recursive(i+1);
+					}, 5000);
+	            } );
+	        }
+	        function send_image() {
+	        	$("#possible-matches").html(" ");
+	        	$.ajax({
+	                url: "/request",
+	                type: "post",
+	                data: { image: raw_image_data, type: 101, person_id: $("#person_id").val() },
+	                success: function(result) {
+	                	console.log(result);
+	                	if(!result.error) {
+
+	                		for(i=0;i<result.data.length;i++) {
+
+	                			if(i == 3 ) {
+	                				break;
+	                			}
+
+	                			var item = `
+	                				<a href="">
+						        	<li class="collection-item"><div>${result.data[i].className} - ${result.data[i].distance}<a href="#!" class="secondary-content"><i class="material-icons">send</i></a></div></li>
+	                				</a>
+	                			`;
+
+	                			$("#possible-matches").append(item);
+	                		}
+
+	                	} else {
+	                		M.toast({html: "error"});
+	                	}
+	                	
+	                }
+	            });
+	        }
+	        
+	        function open_sidebar() {
+	        	var instance = M.Sidenav.getInstance($("#mobile-demo"));
+	        	instance.open();
+	        }
+
+	        function send_dataset() {
+	        	// $('form').submit();
+	        	
+	        	var formData = new FormData();
+				
+				// HTML file input, chosen by user
+				formData.append("userfile", $('#file')[0].files[0]);
+				
+				var request = new XMLHttpRequest();
+				
+				request.onreadystatechange = function() {
+				    if (this.readyState == 4 && this.status == 200) {
+				    	var current = this.responseText;
+			    		M.toast({html: current});
+			    		reload_dataset();
+				    	console.log('response: ' + this.responseText);
+				    }
+			  	};
+			  	request.timeout = 1000*60*30;
+				request.open("POST", "/handleDataset");
+				request.send(formData);
+	        }
+	    </script> 
+	    <script type="text/javascript">
+	    	$(document).ready(function(){
+	    		$('.tabs').tabs();
+	    		$('.sidenav').sidenav();
+	    	});
+	    </script>
+   	</body>
+</html>

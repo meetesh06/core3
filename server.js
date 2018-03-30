@@ -106,6 +106,11 @@ app.post('/profile', urlencodedParser, function(req, res) {
 		var images = [image1, image2, image3, image4, image5];
 		var raw_roll = req.body.roll_no;
 		req.body.roll_no = req.body.roll_no.replace(/\//g, '_');
+
+		var name = req.body.first_name + "_" + req.body.last_name;
+		req.body.name = req.body.roll_no.replace(/\$/g, '_');
+
+
 		var recognizer = fr.AsyncFaceRecognizer();
 		var finals = [];
 
@@ -148,38 +153,39 @@ app.post('/profile', urlencodedParser, function(req, res) {
 						recognizer.load(modelState1);	
 					} catch(err) {
 					}
-					for(i=0;i<5;i++) {
-						try {
-							var final_image_from_uri = fr.loadImage(dd+i+".jpeg");
-							// finals.push(recognizer.addFaces(detector.detectFaces(final_image_from_uri), req.body.roll_no ));
-							var faces = detector.detectFaces(final_image_from_uri);
-							if (faces.length > 0) {
-								recognizer.addFaces(faces, req.body.roll_no )
-							} else {
-								return res.send("image not clear, please take better a image in which the entire face is clearly visible");
-							}
-						} catch (error) {
-							return res.send("error: "+error);
+				}
+				for(i=0;i<5;i++) {
+					try {
+						var final_image_from_uri = fr.loadImage(dd+i+".jpeg");
+						// finals.push(recognizer.addFaces(detector.detectFaces(final_image_from_uri), req.body.roll_no ));
+						var faces = detector.detectFaces(final_image_from_uri);
+						if (faces.length > 0) {
+							recognizer.addFaces(faces, name + "$" + req.body.roll_no);
+						} else {
+							return res.send("image not clear, please take better a image in which the entire face is clearly visible");
 						}
+					} catch (error) {
+						return res.send("error: "+error);
 					}
-			 		// Promise.all(finals).then(() => { 
- 			
-						// console.log("promise done");
-							
-						fs.writeFileSync('./datasets/'+ req.session.email +'.json', JSON.stringify(recognizer.serialize()));
-								 		
-						recognizer1[req.session.email] = recognizer;
-			 			
-			 			return res.send("Successful updating the dataset <a href='/'>Go To Home</a>");
-			 			
-			 		// } ).catch((error) => { 
-						// res.send("Error");
-			 		// 	console.log("promise error: "+error); 
-			 		// });
-
-
 				}
 
+		 		Promise.all(finals).then(() => { 
+		 			
+		 			fs.unlink('./datasets/'+ req.session.email +'.json', function(err) {
+		 				console.log("promise done");
+		 				console.log("NEW res: "+recognizer.getDescriptorState()[0].numFaces);
+						fs.writeFileSync('./datasets/'+ req.session.email +'.json', JSON.stringify(recognizer.serialize()));
+						rimraf(__dirname+'/tempDatasetBuffer/'+req.session.email, function () { console.log('done deleting folder'); });
+						recognizer1[req.session.email] = recognizer;
+			
+			 			res.redirect("/");
+		 			});
+		 			
+		 			
+		 			
+		 			
+		 			
+		 		} ).catch((error) => { console.log("promise error: "+error); });
 		    }
 		});
 
@@ -193,12 +199,12 @@ app.post('/profile', urlencodedParser, function(req, res) {
 });
 
 app.get('/live', function(req, res) {
-	res.render('test');	
+	res.render('live', { header: true });	
 });
 
-app.get('/profile', function(req, res) {
+app.get('/generate', function(req, res) {
 	if(req.session.auth) {
-		res.render('profile', { header: true });	
+		res.render('generate', { header: true });	
 	} else {
 		res.redirect('/');
 	}
@@ -348,6 +354,8 @@ app.post('/reload-dataset', function(req, res) {
 	}
 });
 
+
+
 // load the dashboard page here
 app.get('/dashboard', function(req, res) {
 	
@@ -424,7 +432,9 @@ app.post('/request', urlencodedParser, function(req, res) {
 						if(err) { res.send( { error: true, data: {} } ) }
 						
 						var faceImages = detector.detectFaces(fr.loadImage("./tempImageBuffer/"+req.session.email+".png"));
-	
+						
+						console.log(faceImages);
+
 						recognizer.predict(faceImages[0]).then((predictions) => {
 							var toSend = predictions;
 							toSend = toSend.sort(compare);
@@ -442,8 +452,52 @@ app.post('/request', urlencodedParser, function(req, res) {
 				} catch(err) {
 					res.send({error: true});
 				}
-				
-				
+			} else if(req.body.type == 102) {
+				var imageData = req.body.image.replace(/^data:image\/png;base64,/, "");
+				var recognizer = fr.AsyncFaceRecognizer();
+				console.log("req 102");
+				if(recognizer1[req.session.email]) {
+					recognizer = recognizer1[req.session.email];
+				} else {
+					var modelState = require('./datasets/'+req.session.email+'.json')
+					recognizer.load(modelState);
+					recognizer1[req.session.email] = recognizer;
+				}
+								
+				if(recognizer1[req.session.email].getDescriptorState().length <= 1) {
+					console.log("recognizer: "+recognizer.getDescriptorState().length);
+					return res.send({error: true});
+				}
+				try {
+					require("fs").writeFile("./tempImageBuffer/"+req.session.email+".png", imageData, 'base64', function(err) {
+						if(err) { res.send( { error: true, data: {} } ) }
+						
+						var faceImages = detector.detectFaces(fr.loadImage("./tempImageBuffer/"+req.session.email+".png"));
+						var finals = [];
+						for(i=0;i<faceImages.length;i++){
+							finals.push(recognizer.predictBest(faceImages[i]).then((predictions) => {
+								console.log(predictions);
+								if(predictions.distance < 0.6) {
+									res.write(predictions.className+"^");
+								} else {
+									res.write("unknown$unknown");
+								}
+								
+							}).catch((error) => {
+							  	console.log(error);
+							  	return res.send({error: true});
+							}));
+						}
+
+				 		Promise.all(finals).then(() => { 
+							res.end();
+							// res.send({error: false, data: toSend });
+				 		} ).catch((error) => { console.log("promise error: "+error); });
+					});
+				} catch(err) {
+					res.send({error: true});
+				}
+
 			} else {
 				res.send( { error: true } );
 			}

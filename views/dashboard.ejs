@@ -12,7 +12,6 @@
 						<br>
 						<ul id="tabs-swipe-demo" class="tabs">
 							<li class="tab col s3"><a class="active" href="#test-swipe-1">detect</a></li>
-							<li class="tab col s3"><a href="#test-swipe-2">generate</a></li>
 							<li class="tab col s3"><a href="#dataset">dataset</a></li>
 						</ul>
 						<div id="test-swipe-1" class="my-container z-depth-2 col s12">
@@ -34,32 +33,6 @@
 								</div>
 							</div>	
 						</div>
-						<div id="test-swipe-2" class="my-container z-depth-2 col s12">
-							<div class="col s2"></div>
-							<div class="col s8">
-								<p class="flow-text">Please enter you dataset in the form of a compressed zip file</p>
-								<form encType="multipart/form-data" action="#" method="POST" class="file-field input-field submit-form">
-									
-									<div class="row">
-							       		<div class="btn red col s6">
-											<span>File</span>
-											<input name="file" id="file" type="file">
-										</div>
-										<div class="file-path-wrapper col s6">
-											<input class="file-path validate" type="text">
-										</div>
-							      	</div>
-									
-									<input id="dataset_type" type="text" hidden="true" name="type" value="102">
-									
-									<div class="row">
-							       		<a href="javascript:void(send_dataset())" class="waves-effect waves-light btn blue col s12">Upload</a>
-							      	</div>
-									
-								</form>
-							</div>
-						</div>
-
 						<div id="dataset" class="my-container z-depth-2 col s12">
 							<div class="row">
 								<div class="col s12">
@@ -144,7 +117,7 @@
 				        	for( i=0; i<result.data.length; i++ ) {
 				        		var collection = `
 				        		<li class="collection-item avatar">
-							      <span class="title">${ result.data[i].className }</span>
+							      <span class="title">${ result.data[i].className.split("$")[0] } <b> ${result.data[i].className.split("$")[1]} </b></span>
 							      <p>
 							      	trained ${ result.data[i].numFaces } faces
 							      </p>

@@ -1,0 +1,165 @@
+<!doctype html>
+<html>
+<head>
+  <% include shims/head.ejs %>
+
+  <script src="build/tracking-min.js"></script>
+  <script src="build/data/face-min.js"></script>
+  <script src="node_modules/dat.gui/build/dat.gui.min.js"></script>
+  <script src="assets/stats.min.js"></script>
+  <script src="js/capture-video-frame.js"></script>
+
+  <style type="text/css">
+      #my_camera_holder {
+        margin: 0 auto;
+      }
+
+      .curve_me {
+        border-radius: 6px;
+        overflow: hidden;
+      }
+
+      
+
+      .dist {
+        margin: 5px; 
+      }
+
+      .main_holder {
+        border-radius: 6px;
+        margin-top: 20px;
+      }
+
+      .take_image {
+        border-radius: 500px;
+        width: 80px;
+      }
+      .main_holder {
+        margin: 0 auto;
+      }
+      
+      #cam_holder {
+        margin-top: 0px;
+        margin-right: auto;
+        margin-bottom: 0px;
+        margin-left: auto;
+      }
+
+      #video {
+        text-align: center;
+        width:100%;
+        margin:auto;
+
+      }
+
+      .collection {
+        height: 500px;
+        overflow: hide;
+      }
+
+  </style>
+</head>
+<body>
+  <% include shims/header.ejs %>
+  <main>
+      <div class="row">
+        <br>
+        <div class="col s8 main_holder ">
+          <br>
+          <h5 class="center">Live Stream</h5>
+          <div id="cam_holder" class="z-depth-2">
+            <video class="curve_me" id="video" preload autoplay loop muted></video>
+            <canvas id="canvas" ></canvas>
+          </div>
+        </div>
+        <div class="col s4 z-depth-2">
+          <br>
+          <h5 class="center">Latest Detections</h5>
+          <ul class="collection">
+          </ul>
+
+        </div>
+      </div>
+      
+  </main>
+
+  
+
+
+
+  <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <script>
+    window.onload = function() {
+      var video = document.getElementById('video');
+      var canvas = document.getElementById('canvas');
+      var context = canvas.getContext('2d');
+      var request = false;
+      var tracker = new tracking.ObjectTracker('face');
+      tracker.setInitialScale(4);
+      tracker.setStepSize(2);
+      tracker.setEdgesDensity(0.1);
+
+
+      tracking.track('#video', tracker, { camera: true });
+
+      tracker.on('track', function(event) {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+   
+        if(!request) {
+          var frame = captureVideoFrame('video', 'png');
+          var raw_image_data = frame.dataUri.replace(/^data\:image\/\w+\;base64\,/, '');
+          request = true;
+          $.ajax({
+              url: "/request",
+              type: "post",
+              data: { image: raw_image_data, type: 102 },
+              success: function(result) {
+                console.log(result);
+                if(!result.error) {
+
+                  var detected = result.split("^");
+                  console.log(detected);
+
+                  var dope = "";
+
+                  for(i=0;i<detected.length-1;i++) {
+                    dope += `
+                      <br>
+                      ${detected[i].split("$")[0]}
+                      <br>
+                      ${detected[i].split("$")[1]}
+                    `;
+                  }
+
+                  var final = `
+                    <li class="collection-item">
+                      ${dope}
+                    </li>
+                  `;
+
+                  $(".collection").prepend(final);
+
+                } else {
+                  console.log("unknown");
+                }
+                request = false;
+              },
+              failure: function(result) {
+                request = false;
+              }
+          });
+        }
+        event.data.forEach(function(rect) {
+          context.strokeStyle = '#a64ceb';
+          context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+          context.font = '11px Helvetica';
+          context.fillStyle = "#fff";
+        });
+      });
+    };
+  </script>
+
+  <% include shims/footer.ejs %>
+
+</body>
+</html>
