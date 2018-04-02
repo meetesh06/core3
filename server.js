@@ -191,7 +191,7 @@ app.get('/', function(req, res) {
 	if(req.session.auth) {
 		res.redirect('/dashboard');	
 	} else {
-		res.render('login', { header: false});	
+		res.render('login', { header: false});
 	}
 });
 
