@@ -5,6 +5,7 @@
     	<a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
 			<% if ( header ) { %>
 			<ul id="nav-mobile" class="right hide-on-med-and-down">
+			    <li><a href="/" class="tooltipped" data-position="bottom" data-tooltip="<%= email %>">Home</a></li>
 				<li><a href="/live">Live</a></li>
 				<li><a href="/generate">Generate</a></li>
 				<li><a href="/logout"><i class="material-icons">label_outline</i></a></li>
@@ -15,9 +16,10 @@
         
 	<% if ( header ) { %>
 	<ul class="sidenav" id="mobile-demo">
+	    <li><a href="/">Home</a></li>
 	    <li><a href="/live">Live</a></li>
 	    <li><a href="/generate">Generate</a></li>
-		<li><a href="/logout"><i class="material-icons">label_outline</i></a></li>
+		<li><a href="/logout">Logout</a></li>
   	</ul>
 	<% } %>
 	

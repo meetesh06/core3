@@ -13,16 +13,10 @@ const session_timeout = 10800000;
 const MongoDBStore = require('connect-mongodb-session')(session);
 const fileUpload = require('express-fileupload');
 const rimraf = require('rimraf');
-// const zip = require('node-zip');
-// const unzip = require('unzip');
 const extract = require('extract-zip')
 const detector = fr.FaceDetector()
 const https = require('https')
 const async = require('async');
-
-// const redirectToHTTPS = require('express-http-to-https').redirectToHTTPS
-
-// process.env.PORT, process.env.IP
 
 // global array responsible for maintaining the user memory tokens
 // this should be the main memory consumpti›on piece of the application
@@ -40,14 +34,6 @@ const httpsOptions = {
 
 const url = 'mongodb://meetesh:polkmn@ds223009.mlab.com:23009/carnival';
 const dbName = 'carnival';
-
-// var sparkPostTransport = require('nodemailer-sparkpost-transport');
-// const smtpTransport = nodemailer.createTransport(sparkPostTransport({
-// 	sparkPostApiKey: "b756a0bc91d1f52939398aa27db9c96142ad8422"
-// }));
-
-// const SparkPost = require('sparkpost');
-// const client = new SparkPost('b756a0bc91d1f52939398aa27db9c96142ad8422');
 
 const smtpTransport = nodemailer.createTransport({
     service: "gmail",
@@ -72,12 +58,7 @@ MongoClient.connect(url, function(err, client) {
 	assert.equal(null, err);
 	console.log("Connected successfully to server");
 	db = client.db(dbName);
-	
-	// app.listen(port, ip, function(){
-	// 	console.log("Wa are live on "+port);
-	// });
 	https.createServer(httpsOptions, app).listen(port);
-
 });
 
 
@@ -88,7 +69,7 @@ MongoClient.connect(url, function(err, client) {
 app.use(require('express-session')({
   secret: 'Its in my dick, bitch',
   cookie: {
-    maxAge: session_timeout // actual
+    maxAge: session_timeout
   },
   store: store,
   resave: false,
@@ -110,7 +91,6 @@ app.post('/profile', urlencodedParser, function(req, res) {
 		var name = req.body.first_name + "_" + req.body.last_name;
 		req.body.name = req.body.roll_no.replace(/\$/g, '_');
 
-
 		var recognizer = fr.AsyncFaceRecognizer();
 		var finals = [];
 
@@ -118,7 +98,6 @@ app.post('/profile', urlencodedParser, function(req, res) {
 		if (!fs.existsSync(dir)){
 		    fs.mkdirSync(dir);
 		}
-
 
 		var dd = "./raw/"+req.body.roll_no+"/";
 
@@ -136,10 +115,7 @@ app.post('/profile', urlencodedParser, function(req, res) {
 		    });
 
 		}, function (err) {
-
 		    if (err) {
-		        // One of the iterations produced an error.
-		        // All processing will now stop.
 		        console.log('A file failed to process');
 		        return res.send("error: "+error);
 		    }
@@ -180,11 +156,6 @@ app.post('/profile', urlencodedParser, function(req, res) {
 			
 			 			res.redirect("/");
 		 			});
-		 			
-		 			
-		 			
-		 			
-		 			
 		 		} ).catch((error) => { console.log("promise error: "+error); });
 		    }
 		});
@@ -199,12 +170,16 @@ app.post('/profile', urlencodedParser, function(req, res) {
 });
 
 app.get('/live', function(req, res) {
-	res.render('live', { header: true });	
+	if(req.session.auth) {
+		res.render('live', { header: true, email: req.session.email });	
+	} else {
+		res.redirect('/');
+	}
 });
 
 app.get('/generate', function(req, res) {
 	if(req.session.auth) {
-		res.render('generate', { header: true });	
+		res.render('generate', { header: true, email: req.session.email });	
 	} else {
 		res.redirect('/');
 	}
@@ -215,13 +190,12 @@ app.get('/', function(req, res) {
 	if(req.session.auth) {
 		res.redirect('/dashboard');	
 	} else {
-		res.render('login', { header: false });	
+		res.render('login', { header: false});	
 	}
 });
 
 // do authentication here
 app.post('/', urlencodedParser, function(req, res) {
-	console.log(req.session.auth);
 	if(req.session.auth) {
 		res.redirect('/dashboard');
 	} else {
@@ -254,7 +228,6 @@ app.get('/register', function(req, res) {
 
 // do authentication here
 app.post('/register', urlencodedParser, function(req, res) {
-	
 	if(!req.session.auth) {
 		if (req.body && req.body.email && req.body.password && req.body.pin) {
 			console.log(req.body);
@@ -302,25 +275,7 @@ app.post('/register', urlencodedParser, function(req, res) {
 			          console.log("Message sent: " + response.message);
 			          res.send({ error: false });
 			      }
-			  });
-			
-			// smtpTransport.sendMail({
-			//   from: 'meeteshmehta4@gmail.com',
-			//   to: req.body.email,
-			//   subject: 'Verification for API',
-			//   text: "Your Verification Pin is: "+random_pin
-			// }, function(err, info) {
-			//   if (err) {
-			//     console.log('Error: ' + err);
-	  //        res.send({ error: true });
-
-			//   } else {
-			//     console.log('Success: ' + info);
-	  //      	res.send({ error: false });
-
-			//   }
-			// });
-			
+			  });			
 		    req.session.auth = false;
 		    req.session.ver_pin = random_pin;
 		}
@@ -377,7 +332,7 @@ app.get('/dashboard', function(req, res) {
 				loaded = false;
 			}
 		}
-		res.render('dashboard', { loaded: loaded, header: true });
+		res.render('dashboard', { loaded: loaded, header: true, email: req.session.email });
 	} else {
 		res.redirect('/');
 	}
