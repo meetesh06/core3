@@ -58,7 +58,8 @@ MongoClient.connect(url, function(err, client) {
 	assert.equal(null, err);
 	console.log("Connected successfully to server");
 	db = client.db(dbName);
-	https.createServer(httpsOptions, app).listen(port);
+	// https.createServer(httpsOptions, app).listen(port);
+	app.listen(port, ()=> console.log("live at "+port));
 });
 
 
